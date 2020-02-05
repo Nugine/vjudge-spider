@@ -1,34 +1,94 @@
 import sys
 import json
 from pprint import pprint
+import argparse
+import csv
 
-data_file = sys.argv[1]
-data = json.load(open(data_file))
 
-problems = data['problems']
+def main(data_file):
+    data = json.load(open(data_file))
 
-for participant in data['participants']:
-    submissions = participant['submissions']
-    score = [0 for _ in range(len(problems))]
+    problems = data['problems']
 
-    for sm in submissions:
-        i = sm['problem_index']
-        if sm['AC']:
-            if score[i] <= 0:
+    results = []
+
+    for participant in data['participants']:
+        submissions = participant['submissions']
+
+        score = [0 for _ in range(len(problems))]
+        ac = [False for _ in range(len(problems))]
+        error = [0 for _ in range(len(problems))]
+
+        for sm in submissions:
+            i = sm['problem_index']
+            if ac[i]:
+                continue
+            if sm['AC']:
                 score[i] += problems[i]['score']
-        else:
-            score[i] -= 50
-    participant['score'] = sum(x for x in score if x > 0)
+                ac[i] = True
+            else:
+                score[i] -= 50
+                error[i] += 1
 
-results = [{'name': p['realname'], 'score':p['score']}
-           for p in data['participants']]
-results.sort(key=lambda x: x['name'])
-results.sort(key=lambda x: x['score'], reverse=True)
+        results.append({
+            'name': participant['realname'],
+            'score': sum(x for x in score if x > 0),
+            'solved': sum(1 if b else 0 for b in ac),
+            'problems': [{
+                'no': chr(i+ord('A')),
+                'AC': ac[i],
+                'error':error[i]
+            } for i in range(len(problems))]
+        })
 
-ans = {
-    'contest_id': data['contest_id'],
-    'rank': results,
-}
+    results.sort(key=lambda x: x['name'])
 
-json.dump(ans, sys.stdout, ensure_ascii=False, indent=4)
-print()
+    ans = {
+        'contest_id': data['contest_id'],
+        'rank': results,
+        'problems': data['problems']
+    }
+
+    return ans
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(prog='analyze')
+    parser.add_argument('data_json')
+    parser.add_argument(
+        '-j', '--json', help="output as json", action='store_true')
+    parser.add_argument('-c', '--csv', help="output as csv",
+                        action='store_true')
+    parser.add_argument('-o', '--output', help="output to file")
+    args = parser.parse_args()
+
+    if not args.json and not args.csv:
+        raise "provide output method"
+
+    if args.json and args.csv:
+        raise "conflice argument"
+
+    ans = main(args.data_json)
+
+    output = open(args.output, 'w') if args.output else sys.stdout
+
+    if args.json:
+        json.dump(ans, output, indent=4, ensure_ascii=False)
+        print(file=output)
+
+    if args.csv:
+        writer = csv.writer(output)
+
+        headers = ['name', f'contest/{ans["contest_id"]}/score']
+        writer.writerow(headers)
+        for r in ans['rank']:
+            writer.writerow([r['name'], r['score']])
+
+        headers = ['name', f'contest/{ans["contest_id"]}/problems']
+        headers.extend(chr(i+ord('A')) for i in range(len(ans['problems'])))
+        writer.writerow(headers)
+
+        for r in ans['rank']:
+            row = [r['name'], r['solved']]
+            row.extend(f"{int(p['AC'])}/{-p['error']}" for p in r['problems'])
+            writer.writerow(row)

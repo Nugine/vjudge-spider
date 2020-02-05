@@ -19,5 +19,5 @@ python3 -m vjspd 123456 -u "my-username" -p "my-password" > 123456.json
 simple analyzer
 
 ```bash
-python3 analyze.py 123456.json
+python3 analyze.py 123456.json -c -o 123456.csv
 ```
