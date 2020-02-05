@@ -66,5 +66,5 @@ def parse_rank(rank):
             'time_seconds': time
         })
 
-    results = [dict(uid=k, **v) for k, v in results.items()]
+    results = [dict(user_id=k, **v) for k, v in results.items()]
     return results
