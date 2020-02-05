@@ -1,1 +1,5 @@
 .vscode
+task.txt
+__pycache__
+participants.json
+problems.json
