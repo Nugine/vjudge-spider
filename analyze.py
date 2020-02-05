@@ -4,6 +4,8 @@ from pprint import pprint
 import argparse
 import csv
 
+penalty_per_error = 50
+
 
 def main(data_file):
     data = json.load(open(data_file))
@@ -27,13 +29,13 @@ def main(data_file):
                 score[i] += problems[i]['score']
                 ac[i] = True
             else:
-                score[i] -= 50
+                score[i] -= penalty_per_error
                 error[i] += 1
 
         results.append({
             'name': participant['realname'],
             'score': sum(x for x in score if x > 0),
-            'solved': sum(1 if b else 0 for b in ac),
+            'solved': sum(int(b) for b in ac),
             'problems': [{
                 'no': chr(i+ord('A')),
                 'AC': ac[i],
